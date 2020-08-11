@@ -90,7 +90,7 @@ class seird_fwd_problem:
             self._assign_vectors(self.u_0, self.u)
             self._solver.solve(self.problem, self.u, self.u_0)
             if time_index % self.out_freq == 0:
-                if self._qoi_type == 'state'
+                if self._qoi_type == 'state':
                     out[store_index, :] = self.problem.evaluate(self.u)*10000.
                 else:
                     out[store_index] = self.problem.evaluate_district(self.u)*10000.

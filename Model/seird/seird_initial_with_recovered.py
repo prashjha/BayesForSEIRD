@@ -92,4 +92,3 @@ def generate_initial_condition(mesh, county_geom, total_pop, infected_cases, rec
         for i in range(5):
             file = dl.File(save_path + names[i] + '_ic.pvd', "compressed")
             file << u[i]
-
