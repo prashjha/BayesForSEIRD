@@ -13,13 +13,13 @@ def validate_date(date_text):
         raise ValueError("Incorrect data format, should be YYYY-MM-DD")
 
 class seird_misfit:
-    def __init__(self, infected_cases, deceased_cases, date, simulation_time, truncated_gaussian = False):
+    def __init__(self, infected_cases, deceased_cases, date, simulation_time, truncated_gaussian = False, data_start_date="2020-03-06"):
         
         self.noise_variance = None
         self.truncated_gaussian = truncated_gaussian
         
         validate_date(date)
-        d0 = datetime.strptime("2020-03-06", "%Y-%m-%d")
+        d0 = datetime.strptime(data_start_date, "%Y-%m-%d")
         d1 = datetime.strptime(date, "%Y-%m-%d")
         day_index = abs((d1-d0)).days
         

@@ -1,32 +1,33 @@
 import dolfin as dl
 import numpy as np
-import hippylib as hl
 from datetime import datetime
 from seird_problem import seird_fwd_problem
 from seird_initial_with_recovered import generate_initial_condition
-from seird_misfit import seird_misfit
-from mcmc_tracer import FullTracer
 
 import os
 import argparse
+
+import sys
+import timeit
 
 STATE = 0
 PARAMETER = 1
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=' Model SEIRD')
-    parser.add_argument('--nsamples',
-                        default=4000,
-                        type=int,
-                        help="Number of MCMC samples")
-    # AMAL: start
-    parser.add_argument('--chain_id',
+
+    parser.add_argument('--num_sim',
                         default=1,
                         type=int,
-                        help="ID of MCMC chain")
+                        help="Total number of sims")
 
+    parser.add_argument('--sim_id',
+                        default=0,
+                        type=int,
+                        help="Simulation id")
+    
     parser.add_argument('--sim_time',
-                        default=25,
+                        default=80,
                         type=float,
                         help="Total simulation time")
     
@@ -70,21 +71,17 @@ if __name__ == "__main__":
                         type=str,
                         help="Relative path to store output files")
 
-    parser.add_argument('--noise_inf',
-                        default=0.05,
-                        type=float,
-                        help="Noise in the infected data")
+    parser.add_argument('--samples_path',
+                        default='../../Results/calibration_11August2020/',
+                        type=str,
+                        help="Relative path to parameter samples")
 
-    parser.add_argument('--noise_dec',
-                        default=0.02,
-                        type=float,
-                        help="Noise in the deceased data")
+    parser.add_argument('--samples_file',
+                        default='param_samples_mcmc_10.npy',
+                        type=str,
+                        help="File name containing samples")
 
-    parser.add_argument('--pcn_s',
-                        default=0.3,
-                        type=float,
-                        help="PCN s parameter")
-    
+     
     args = parser.parse_args()
     print('Arguments passed: ')
     print(args)
@@ -100,7 +97,6 @@ if __name__ == "__main__":
     mesh_path = args.mesh_path
     mesh_fname = args.mesh_file
     mesh = dl.Mesh(mesh_path + mesh_fname +  ".xml")
-    #mesh = dl.RectangleMesh(dl.Point(-107, 25), dl.Point(-93, 37), 100, 100)
 
     # FE space
     FE_polynomial = 1
@@ -110,7 +106,12 @@ if __name__ == "__main__":
     data_path = args.data_path
     infected_total_state = np.loadtxt(data_path + 'covid_11August2020/infected_total_state.txt')
     deceased_state = np.loadtxt(data_path + 'covid_11August2020/deceased_state.txt')
-        
+
+    # save data 
+    d0 = datetime.strptime("2020-07-15", "%Y-%m-%d")
+    d1 = datetime.strptime(date, "%Y-%m-%d")
+    day_index = abs((d1-d0)).days
+
     # Define elements: P1 and real number
     P1  = dl.FiniteElement("Lagrange", mesh.ufl_cell(), 1)
     R   = dl.FiniteElement("R", mesh.ufl_cell(), 0)
@@ -152,67 +153,79 @@ if __name__ == "__main__":
 
     # describe qoi type: 
     # 'state', 'district'
-    qoi_type = 'state'
+    qoi_type = 'district'
 
     # create pde problem
     pde = seird_fwd_problem(Vh, simulation_time, dt, u_init, subdmn_path = args.subdmn_path, mesh_tag=mesh_fname, qoi_type=qoi_type)
 
-    # create misfit function
-    misfit = seird_misfit(infected_total_state, deceased_state, date, simulation_time, data_start_date=date)
-    noise_inf = args.noise_inf
-    noise_dec = args.noise_dec
-    misfit.set_noise_variance([noise_inf, noise_dec])
+    # load parameter samples
+    samples_path = args.samples_path
+    samples_file = args.samples_file
+    param_samples = np.load(samples_path + samples_file)
+    #param_samples = param_samples[:5]
 
-    # set prior distribution (mode from the validation data in the paper)
-    p_mode = np.array([379, 3.46e-4, 2.7e-6, 0.0614, 2.07e-3, 0.0686, 2.08])
-    p_sigma = np.array([0.4,0.5,0.5,0.25, 0.25 ,0.25, 0.25])
-    p_mean = np.log(p_mode) + p_sigma**2
-    mean = pde.generate_parameter()
-    mean.set_local(p_mean)
-    prior = hl.GaussianRealPrior(Vh[PARAMETER], np.diag(p_sigma**2), mean=mean)
+    # get sims and sim id
+    num_sim = args.num_sim+1
+    sim_id = args.sim_id
+    if num_sim == 0 or num_sim == sim_id:
+        raise IndexError('Number of sim or sim id is invalid')
 
-    # create model
-    model = hl.Model(pde, prior, misfit)
-    
-    # mcmc chain
-    chain_id = args.chain_id
-    
-    # preconditioned Crank-Nicolson (pCN) sampler
-    kernel = hl.pCNKernel(model)
-    pcn_s = args.pcn_s
-    kernel.parameters["s"] = pcn_s
-    chain = hl.MCMC(kernel)
-    
-    # output path
+    # output and log paths
     out_path = args.out_path
-    if not os.path.isdir(out_path):
-        os.mkdir(out_path)
-    
-    # save data
-    calibration_result_path = out_path + '/run_' + str(chain_id) + '/'
-    try:
-        np.save(calibration_result_path + 'data.npy', misfit.data)
-    except:
-        os.mkdir(calibration_result_path)
-        np.save(calibration_result_path + 'data.npy', misfit.data)
-    
-    tracer = FullTracer(Vh, simulation_time, calibration_result_path, print = False)
+    qoi_path = out_path + '/qoi/'
+    log_path = out_path + '/log/'
+    sys.stdout = open(log_path + 'sim_' + str(sim_id) + '.log', 'w')
+    print('\n\nsim id: {0:<8} num sim: {1}\n\n'.format(sim_id, num_sim))
 
-    chain.parameters["number_of_samples"]     = args.nsamples
-    chain.parameters["burn_in"]               = 0
-    chain.parameters["print_progress"]        = 10
-    chain.parameters["print_level"]           = -1
+    # save real data
+    if sim_id == 0:
+        data_last_day = 25
+        data = np.empty((data_last_day, 2))
+        data[:, 0] = infected_total_state[day_index+1:(day_index + data_last_day+1):1]
+        data[:, 1] = deceased_state[day_index+1:(day_index + data_last_day+1):1]
     
-    for idx in range(chain_id-1):
-        chain.consume_random() # exhaust randoms used in previous chains
-        
-    noise = dl.Vector()
-    prior.init_vector(noise,"noise")
-    hl.parRandom.normal(1., noise)
-    m0 = dl.Vector()
-    prior.init_vector(m0, 0)
-    prior.sample(noise,m0)
+        np.save(qoi_path + 'data.npy', data)
 
-    n_accept = chain.run(m0, qoi = None, tracer = tracer)
-    print("Number accepted = {0}".format(n_accept))
-    tracer.save()
+    # solve
+    sim_time = []
+    qoi = []
+    counter = 0
+    current_run = 0
+
+    for param in param_samples:
+
+        # divide the tasks into num_sim and let sim_id perform task 
+        # associated to it
+        if counter % num_sim == sim_id:
+
+            print('\n\nsimulation counter: {}\n'.format(counter))
+
+            start = timeit.default_timer()
+
+            #### solve for current sample
+            x = [pde.generate_state_district(), pde.generate_parameter(), None]
+            m_test = np.array(param)
+
+            x[PARAMETER].set_local(m_test)
+            pde.solveFwd(x[STATE], x)
+
+            # save QoI
+            qoi.append(x[STATE])
+            if current_run % 5 == 0:
+                np.save(qoi_path + 'qoi_' + str(sim_id) + '.npy', qoi)
+
+            stop = timeit.default_timer()
+            sim_time.append(stop - start)
+
+            current_run += 1
+            
+        counter += 1
+
+
+    # save QoI
+    np.save(qoi_path + 'qoi_' + str(sim_id) + '.npy', qoi)
+
+    # output mean time
+    print('mean sim time: {}'.format(np.mean(sim_time)))
+
+

@@ -8,15 +8,10 @@ mcmc_dir="mcmc_$mcmc_id"
 if [[ ! -d "$mcmc_dir" ]]; then
 	mkdir $mcmc_dir
 fi
-cd $mcmc_dir
-if [[ ! -d "calibration_result" ]]; then
-	mkdir calibration_result
-fi
-cd ..
 
 num_chains="4"
-# for i in $(seq 1 $num_chains); do screen -dmS mcmc-$mcmc_id-$i "./mcmc_$mcmc_id.sh" $num_chains $i; done
+for i in $(seq 1 $num_chains); do screen -dmS mcmc-$mcmc_id-$i "./mcmc_$mcmc_id.sh" $num_chains $i; done
 
 # for i in $(seq 1 $num_chains); do "./mcmc_$mcmc_id.sh" $num_chains $i; done
-"./mcmc_$mcmc_id.sh" 1 1 
+#"./mcmc_$mcmc_id.sh" 1 1 
 

@@ -83,6 +83,19 @@ The model was found to be invalid for the prediction of the total infected cases
 :-------------------------:|:-------------------------:
 ![](Plots/map_plot_cases_in_district_2020-08-15.png)   |  ![](Plots/map_plot_cases_in_district_2020-09-01.png) 
 
+### Revised prediction results
+
+Recalibrated the model using data from 15 July - 9 August and computed new prediction from 10 August till 15 September.
+
+- Prediction results for total infected and deceased cases in Texas starting from 10 August till 15 September 2020
+
+![](Plots/new_prediction_until_15Sep.png "Prediction of cases in Texas in time period 10 August 2020 - 15 September 2020")
+
+- Projection of cases in top five districts. Predition period is 15 August 2020 - 15 September 2020
+
+![](Plots/new_prediction_top_five_district_until_15Sep.png "Prediction of cases in top five districts of Texas")
+
+
 ## Dependencies
 Create new conda environment as follows:
 

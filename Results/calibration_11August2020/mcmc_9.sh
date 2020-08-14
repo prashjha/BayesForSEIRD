@@ -8,7 +8,7 @@ source /home/prashant/anaconda3/etc/profile.d/conda.sh
 conda activate confen
 
 # cd to build directory
-cd mcmc_4
+cd mcmc_9
 
 # set param dim
 pardim="7"
@@ -33,8 +33,8 @@ cd $rundir
 # hyper parameters
 sim_time="25.0"
 time_step="0.1"
-noise_inf="0.08"
-noise_dec="0.04"
+noise_inf="0.12"
+noise_dec="0.05"
 pcn_s="0.3"
 
 # data and solver path
@@ -60,7 +60,7 @@ python  "$fwdpath""run_calibration_multichain_11August2020.py" \
 				--mesh_path="$mpath" \
 				--mesh_file="$meshfile" \
 				--ic_path="$icpath" \
-				--generate_ic="1" \
+				--generate_ic="0" \
 				--subdmn_path="$submnpath" \
 				--out_path="$opath" \
 				--noise_inf="$noise_inf" \
