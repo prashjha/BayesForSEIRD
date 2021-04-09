@@ -157,7 +157,7 @@ class seird_forms:
                             self.dt*(un_k*dl.exp(self.nu[EX])*dl.inner(dl.grad(self.u_trial), dl.grad(self.p)))*dl.dx
 
         # Define the weak form for phi_i evolution
-        f_i = - dl.exp(self.gamma[DE])*self.u_trial - dl.exp(self.gamma[RE])*self.u_trial + dl.exp(self.sigma)*self.u_trial
+        f_i = - dl.exp(self.gamma[DE])*self.u_trial - dl.exp(self.gamma[RE])*self.u_trial + dl.exp(self.sigma)*self.u_k[EX]
         F[IN]     = (self.u_trial-self.u_0[IN])*self.p*dl.dx - self.dt*f_i*self.p*dl.dx +\
                             self.dt*(un_k*dl.exp(self.nu[IN])*dl.inner(dl.grad(self.u_trial), dl.grad(self.p)))*dl.dx
                             
